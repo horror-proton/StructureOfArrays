@@ -35,15 +35,24 @@ constexpr auto tuple_for_each(TupleT &t, Func /* [](auto &e, Args...) { ... } */
 
 namespace detail {
 
-template<class TupleT, typename Func, typename ...Elems, std::size_t ...I>
-constexpr auto tuple_transform_impl(std::index_sequence<I...>, TupleT &t, Func, Elems &&...arg2nd) {
-    (Func{}(get<I>(t), std::forward<Elems>(arg2nd)), ...);
-}
+template<std::size_t CommArgNum = 0>
+struct tuple_transform_helper;
 
-template<class TupleT, typename Func, typename ...Elems>
-constexpr auto tuple_transform(TupleT &t, Func /* [](auto &e, auto &o) { ... } */, Elems &&...arg2nd) {
-    tuple_transform_impl(std::make_index_sequence<sizeof...(Elems)>{}, t, Func{}, std::forward<Elems>(arg2nd)...);
-}
+template<>
+struct tuple_transform_helper<0> {
+    template<class TupleT, typename Func, typename ...Elems, std::size_t ...I>
+    static constexpr auto apply(std::index_sequence<I...>, TupleT &t, Func, Elems &&...elems) {
+        (Func{}(get<I>(t), std::forward<Elems>(elems)), ...);
+    }
+};
+
+template<>
+struct tuple_transform_helper<1> {
+    template<class TupleT, typename Func, typename ...Elems, std::size_t ...I>
+    static constexpr auto apply(std::size_t it, std::index_sequence<I...>, TupleT &t, Func, Elems &&...elems) {
+        (Func{}(get<I>(t), it, std::forward<Elems>(elems)), ...);
+    }
+};
 
 }
 
@@ -93,6 +102,10 @@ public:
         detail::tuple_for_each(m_tuple, [](auto &arr, size_type n) { arr.resize(n); }, new_size);
     }
 
+    constexpr void shrink_to_fit() {
+        detail::tuple_for_each(m_tuple, [](auto &arr) { arr.shrink_to_fit(); });
+    }
+
     [[nodiscard]] constexpr bool empty() const noexcept { return get_array<0>().empty(); }
 
     constexpr void reserve(size_type n) {
@@ -111,7 +124,8 @@ public:
     template<typename ...Args>
     constexpr void push_back(Args &&...elems) {
         static_assert(sizeof...(Args) == sizeof...(Elems));
-        detail::tuple_transform(
+        detail::tuple_transform_helper<0>::apply(
+                std::make_index_sequence<tuple_size>{},
                 m_tuple,
                 [](auto &arr, auto &&e) { arr.push_back(std::forward<decltype(e)>(e)); },
                 std::forward<Args>(elems)...);
@@ -119,6 +133,16 @@ public:
 
     constexpr void pop_back() noexcept {
         detail::tuple_for_each(m_tuple, [](auto &arr) { arr.pop_back(); });
+    }
+
+    template<typename ...Args>
+    constexpr void insert(size_type position, Args &&...elems) {
+        detail::tuple_transform_helper<1>::apply(
+                position,
+                std::make_index_sequence<tuple_size>{},
+                m_tuple,
+                [](auto &arr, size_type pos, auto &&e) { arr.insert(arr.begin() + pos, std::forward<decltype(e)>(e)); },
+                std::forward<Args>(elems)...);
     }
 
     constexpr void clear() noexcept {
