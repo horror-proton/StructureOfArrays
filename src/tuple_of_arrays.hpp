@@ -4,17 +4,26 @@
 
 namespace detail {
 
+#ifdef __cpp_lib_type_identity
+using std::type_identity;
+#else
+template<typename T>
+struct type_identity {
+    using type = T;
+};
+#endif
+
 template<std::size_t N, typename ...Ts>
 struct parameter_pack_Nth {
     static_assert(sizeof...(Ts) /* always false */, "parameter pack index out of range");
 };
 
 template<typename First, typename ...Rest>
-struct parameter_pack_Nth<0, First, Rest...> : std::type_identity<First> {
+struct parameter_pack_Nth<0, First, Rest...> : type_identity<First> {
 };
 
 template<std::size_t N, typename First, typename ...Rest>
-struct parameter_pack_Nth<N, First, Rest...> : std::type_identity<typename parameter_pack_Nth<N - 1, Rest...>::type> {
+struct parameter_pack_Nth<N, First, Rest...> : type_identity<typename parameter_pack_Nth<N - 1, Rest...>::type> {
 };
 
 }
@@ -22,13 +31,14 @@ struct parameter_pack_Nth<N, First, Rest...> : std::type_identity<typename param
 namespace detail {
 
 template<class TupleT, typename Func, typename ...Args, std::size_t ...I>
-constexpr auto tuple_for_each_impl(std::index_sequence<I...>, TupleT &t, Func, Args &&...args) {
-    (Func{}(get<I>(t), std::forward<Args>(args)...), ...); // TODO: what to return?
+constexpr auto tuple_for_each_impl(std::index_sequence<I...>, TupleT &t, Func f, Args &&...args) {
+    using std::get;
+    (f(get<I>(t), std::forward<Args>(args)...), ...); // TODO: what to return?
 }
 
 template<class TupleT, typename Func, typename ...Args>
-constexpr auto tuple_for_each(TupleT &t, Func /* [](auto &e, Args...) { ... } */, Args &&...args) {
-    tuple_for_each_impl(std::make_index_sequence<std::tuple_size_v<TupleT>>{}, t, Func{}, std::forward<Args>(args)...);
+constexpr auto tuple_for_each(TupleT &t, Func f/* [](auto &e, Args...) { ... } */, Args &&...args) {
+    tuple_for_each_impl(std::make_index_sequence<std::tuple_size_v<TupleT>>{}, t, f, std::forward<Args>(args)...);
 }
 
 }
@@ -41,16 +51,18 @@ struct tuple_transform_helper;
 template<>
 struct tuple_transform_helper<0> {
     template<class TupleT, typename Func, typename ...Elems, std::size_t ...I>
-    static constexpr auto apply(std::index_sequence<I...>, TupleT &t, Func, Elems &&...elems) {
-        (Func{}(get<I>(t), std::forward<Elems>(elems)), ...);
+    static constexpr auto apply(std::index_sequence<I...>, TupleT &t, Func f, Elems &&...elems) {
+        using std::get;
+        (f(get<I>(t), std::forward<Elems>(elems)), ...);
     }
 };
 
 template<>
 struct tuple_transform_helper<1> {
     template<class TupleT, typename Func, typename ...Elems, std::size_t ...I>
-    static constexpr auto apply(std::size_t it, std::index_sequence<I...>, TupleT &t, Func, Elems &&...elems) {
-        (Func{}(get<I>(t), it, std::forward<Elems>(elems)), ...);
+    static constexpr auto apply(std::size_t it, std::index_sequence<I...>, TupleT &t, Func f, Elems &&...elems) {
+        using std::get;
+        (f(get<I>(t), it, std::forward<Elems>(elems)), ...);
     }
 };
 
@@ -58,8 +70,8 @@ struct tuple_transform_helper<1> {
 
 namespace detail::force_adl {
 
-template<std::size_t N>
-constexpr auto &get(auto &arg) {
+template<std::size_t N, typename Arg>
+constexpr auto &get(Arg &arg) {
     return get<N>(arg);
 }
 
