@@ -68,11 +68,13 @@ struct tuple_transform_helper<1> {
 
 }
 
-namespace detail::force_adl {
+namespace detail {
 
-template<std::size_t N, typename Arg>
-constexpr auto &get(Arg &arg) {
-    return get<N>(arg);
+// in case there is a member function also named get
+template<std::size_t I, typename Arg>
+constexpr decltype(auto) adl_get(Arg &&arg) {
+    using std::get;
+    return get<I>(std::forward<Arg>(arg));
 }
 
 }
@@ -125,7 +127,7 @@ public:
     }
 
     template<std::size_t Array>
-    const Nth_array_type<Array> &get_array() const { return detail::force_adl::get<Array>(m_tuple); }
+    const Nth_array_type<Array> &get_array() const { return detail::adl_get<Array>(m_tuple); }
 
     template<std::size_t Array>
     [[nodiscard]] constexpr const Nth_value_type<Array> &get(size_type n) const { return get<Array>(m_tuple)[n]; }
