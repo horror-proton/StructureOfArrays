@@ -160,14 +160,14 @@ public:
     constexpr void erase(size_type position) {
         detail::tuple_for_each(
                 m_tuple,
-                [](auto &arr, size_type p){ arr.erase(arr.begin() + p, arr.begin() + p + 1); },
+                [](auto &arr, size_type p) { arr.erase(arr.begin() + p, arr.begin() + p + 1); },
                 position);
     }
 
     constexpr void erase(size_type first, size_type last) {
         detail::tuple_for_each(
                 m_tuple,
-                [](auto &arr, size_type f, size_type l){ arr.erase(arr.begin() + f, arr.begin() + l); },
+                [](auto &arr, size_type f, size_type l) { arr.erase(arr.begin() + f, arr.begin() + l); },
                 first, last);
     }
 
@@ -177,7 +177,7 @@ public:
 
     void swap(tuple_of_arrays &other) noexcept { m_tuple.swap(other.m_tuple); }
 
-    friend void swap(tuple_of_arrays &a, tuple_of_arrays&b) noexcept {
+    friend void swap(tuple_of_arrays &a, tuple_of_arrays &b) noexcept {
         using std::swap;
         return swap(a.m_tuple, b.m_tuple);
     }
