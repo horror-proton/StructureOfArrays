@@ -1,3 +1,4 @@
+#include <functional>
 #include <tuple>
 #include <type_traits>
 #include <vector>
@@ -31,14 +32,17 @@ struct parameter_pack_Nth<N, First, Rest...> : type_identity<typename parameter_
 namespace detail {
 
 template<class TupleT, typename Func, typename ...Args, std::size_t ...I>
-constexpr auto tuple_for_each_impl(std::index_sequence<I...>, TupleT &t, Func f, Args &&...args) {
+constexpr auto tuple_for_each_impl(std::index_sequence<I...>, TupleT &t, Func &&f, Args &&...args) {
     using std::get;
-    (f(get<I>(t), std::forward<Args>(args)...), ...); // TODO: what to return?
+    (std::invoke(std::forward<Func>(f), get<I>(t), std::forward<Args>(args)...), ...); // TODO: what to return?
 }
 
 template<class TupleT, typename Func, typename ...Args>
-constexpr auto tuple_for_each(TupleT &t, Func f/* [](auto &e, Args...) { ... } */, Args &&...args) {
-    tuple_for_each_impl(std::make_index_sequence<std::tuple_size_v<TupleT>>{}, t, f, std::forward<Args>(args)...);
+constexpr auto tuple_for_each(TupleT &t, Func &&f/* [](auto &e, Args...) { ... } */, Args &&...args) {
+    tuple_for_each_impl(
+            std::make_index_sequence<std::tuple_size_v<TupleT>>{},
+            t, std::forward<Func>(f), std::forward<Args>(args)...
+    );
 }
 
 }
