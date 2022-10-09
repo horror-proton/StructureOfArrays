@@ -134,10 +134,10 @@ public:
     const Nth_array_type<Array> &get_array() const { return detail::adl_get<Array>(m_tuple); }
 
     template<std::size_t Array>
-    [[nodiscard]] constexpr const Nth_value_type<Array> &get(size_type n) const { return get<Array>(m_tuple)[n]; }
+    [[nodiscard]] constexpr const Nth_value_type<Array> &get(size_type n) const { return detail::adl_get<Array>(m_tuple)[n]; }
 
     template<std::size_t Array>
-    [[nodiscard]] constexpr Nth_value_type<Array> &get(size_type n) { return get<Array>(m_tuple)[n]; }
+    [[nodiscard]] constexpr Nth_value_type<Array> &get(size_type n) { return detail::adl_get<Array>(m_tuple)[n]; }
 
     template<typename ...Args>
     constexpr void push_back(Args &&...elems) {
