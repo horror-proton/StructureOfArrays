@@ -53,19 +53,22 @@ template <std::size_t CommArgNum = 0> struct tuple_transform_helper;
 
 template <> struct tuple_transform_helper<0> {
   template <class TupleT, typename Func, typename... Elems, std::size_t... I>
-  static constexpr auto apply(std::index_sequence<I...>, TupleT &t, Func f,
+  static constexpr auto apply(std::index_sequence<I...>, TupleT &t, Func &&f,
                               Elems &&...elems) {
     using std::get;
-    (f(get<I>(t), std::forward<Elems>(elems)), ...);
+    (std::invoke(std::forward<Func>(f), get<I>(t), std::forward<Elems>(elems)),
+     ...);
   }
 };
 
 template <> struct tuple_transform_helper<1> {
   template <class TupleT, typename Func, typename... Elems, std::size_t... I>
   static constexpr auto apply(std::size_t it, std::index_sequence<I...>,
-                              TupleT &t, Func f, Elems &&...elems) {
+                              TupleT &t, Func &&f, Elems &&...elems) {
     using std::get;
-    (f(get<I>(t), it, std::forward<Elems>(elems)), ...);
+    (std::invoke(std::forward<Func>(f), get<I>(t), it,
+                 std::forward<Elems>(elems)),
+     ...);
   }
 };
 
