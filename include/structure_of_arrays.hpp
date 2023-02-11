@@ -1,5 +1,6 @@
 #pragma once
 #include <cstddef>
+#include <functional>
 #include <iterator>
 #include <tuple>
 #include <utility>
@@ -23,20 +24,12 @@ struct type_enumerate<std::index_sequence<Is...>, Ts...> {
 
 template <typename...> struct dummy {};
 
-template <typename M>
-constexpr decltype(auto) meta_struct_get(std::remove_reference_t<M> &ms_self) {
-  return (ms_self.value);
-}
-
-template <typename M>
-constexpr decltype(auto)
-meta_struct_get(const std::remove_reference_t<M> &ms_self) {
-  return (ms_self.value);
-}
-
-template <typename M>
-constexpr decltype(auto) meta_struct_get(std::remove_reference_t<M> &&ms_self) {
-  return std::move(ms_self.value);
+template <typename MetaStruct, typename F, typename... Args, std::size_t... Is>
+void soa_for_each_impl(std::index_sequence<Is...>, MetaStruct &&ms_self,
+                       F &&func, Args &&...args) {
+  (std::invoke(std::forward<F>(func), ms_self.template get_array<Is>(),
+               std::forward<Args>(args)...),
+   ...);
 }
 
 } // namespace detail
@@ -54,15 +47,21 @@ public:
 
   // TODO: find better solution in C++23
   template <std::size_t N> decltype(auto) get_array() & {
-    return detail::meta_struct_get<Nth_member_type<N>>(*this);
+    return (static_cast<Nth_member_type<N> &>(*this).value);
   }
 
   template <std::size_t N> decltype(auto) get_array() const & {
-    return detail::meta_struct_get<Nth_member_type<N>>(*this);
+    return (static_cast<const Nth_member_type<N> &>(*this).value);
   }
 
   template <std::size_t N> decltype(auto) get_array() && {
-    return detail::meta_struct_get<Nth_member_type<N>>(*this);
+    return std::move(static_cast<Nth_member_type<N> &&>(*this).value);
+  }
+
+  void resize(std::size_t new_size) {
+    detail::soa_for_each_impl(
+        std::make_index_sequence<narray>{}, *this,
+        [](auto &&array, std::size_t s) { array.resize(s); }, new_size);
   }
 };
 
