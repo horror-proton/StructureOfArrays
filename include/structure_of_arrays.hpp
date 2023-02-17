@@ -36,6 +36,20 @@ inline constexpr void soa_for_each_impl(std::index_sequence<Is...>,
    ...);
 }
 
+// TODO: use Member parameter pack instead
+template <std::size_t N> struct soa_transform_helper;
+
+template <> struct soa_transform_helper<0> {
+  template <std::size_t... Is, typename S, typename F, typename... Args>
+  static constexpr auto apply(std::index_sequence<Is...>, S &&s_self, F &&f,
+                              Args &&...args) {
+    (std::invoke(std::forward<F>(f),
+                 std::forward<S>(s_self).template get_array<Is>(),
+                 std::forward<Args>(args)),
+     ...);
+  }
+};
+
 } // namespace detail
 
 template <typename MemberInfo> class structure_of_arrays_impl;
@@ -91,8 +105,31 @@ public:
         });
   }
 
-  constexpr void push_back(typename Members::value_type::value_type... v) {
+  constexpr void clear() {
+    detail::soa_for_each_impl(
+        std::make_index_sequence<narray>{}, *this,
+        [](auto &&array) { std::forward<decltype(array)>(array).clear(); });
+  }
+
+  constexpr void
+  swap(structure_of_arrays_impl<detail::dummy<Members...>> &other) {
     // FIXME
+  }
+
+  template <typename... Ts> constexpr void push_back(Ts &&...args) {
+    detail::soa_transform_helper<0>::apply(
+        std::make_index_sequence<narray>{}, *this,
+        [](auto &&arr, auto &&val) {
+          std::forward<decltype(arr)>(arr).push_back(
+              std::forward<decltype(val)>(val));
+        },
+        std::forward<Ts>(args)...);
+  }
+
+  template <typename... Ts> constexpr void pop_back() {
+    detail::soa_for_each_impl(
+        std::make_index_sequence<narray>{}, *this,
+        [](auto &&array) { std::forward<decltype(array)>(array).pop_back(); });
   }
 };
 
