@@ -85,6 +85,38 @@ public:
 
   constexpr auto empty() const { return size() == 0; }
 
+  template <std::size_t N> constexpr decltype(auto) get(std::size_t n) {
+    return (get_array<N>()[n]);
+  }
+
+  template <std::size_t N> constexpr decltype(auto) get(std::size_t n) const {
+    return (get_array<N>()[n]);
+  }
+
+  template <std::size_t N> constexpr decltype(auto) front() {
+    return (get_array<N>().front());
+  }
+
+  template <std::size_t N> constexpr decltype(auto) front() const {
+    return (get_array<N>().front());
+  }
+
+  template <std::size_t N> constexpr decltype(auto) back() {
+    return (get_array<N>().back());
+  }
+
+  template <std::size_t N> constexpr decltype(auto) back() const {
+    return (get_array<N>().back());
+  }
+
+  template <std::size_t N> constexpr decltype(auto) data() {
+    return (get_array<N>().data());
+  }
+
+  template <std::size_t N> constexpr decltype(auto) data() const {
+    return (get_array<N>().data());
+  }
+
   constexpr void resize(std::size_t new_size) {
     (SOA_ARRAY_PARAM_PACK.resize(new_size), ...);
   }
@@ -112,11 +144,35 @@ public:
     (SOA_ARRAY_PARAM_PACK.pop_back(), ...);
   }
 
+  template <typename... Ts> constexpr void insert(std::size_t pos, Ts... args) {
+    (SOA_ARRAY_PARAM_PACK.emplace(SOA_ARRAY_PARAM_PACK.begin() + pos,
+                                  std::forward<Ts>(args)),
+     ...);
+  }
+
+  constexpr auto erase(std::size_t pos) {
+    (SOA_ARRAY_PARAM_PACK.erase(SOA_ARRAY_PARAM_PACK.begin() + pos), ...);
+    return pos;
+  }
+
+  constexpr auto erase(std::size_t first, std::size_t last) {
+    (SOA_ARRAY_PARAM_PACK.erase(SOA_ARRAY_PARAM_PACK.begin() + first,
+                                SOA_ARRAY_PARAM_PACK.begin() + last),
+     ...);
+    return last;
+  }
+
 #undef SOA_ARRAY_PARAM_PACK
 };
 
 template <template <typename> typename Array = std::vector, typename... T>
-using structure_of_arrays =
+using structure_of_arrays_ =
     structure_of_arrays_impl<typename detail::type_enumerate<
         std::index_sequence_for<T...>,
         Array<T>...>::template sequence<detail::dummy, detail::tag_and_value>>;
+
+template <typename... T>
+using structure_of_arrays = structure_of_arrays_impl<
+    typename detail::type_enumerate<std::index_sequence_for<T...>,
+                                    std::vector<T>...>::
+        template sequence<detail::dummy, detail::tag_and_value>>;
